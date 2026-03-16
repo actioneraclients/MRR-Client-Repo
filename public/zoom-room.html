@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Zoom Room</title>
+    <script src="https://source.zoom.us/2.18.2/lib/vendor/react.min.js"></script>
+    <script src="https://source.zoom.us/2.18.2/lib/vendor/react-dom.min.js"></script>
+    <script src="https://source.zoom.us/2.18.2/zoom-meeting-2.18.2.min.js"></script>
+  </head>
+  <body style="margin:0;padding:0;background:black;">
+    <div id="zmmtg-root"></div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const meetingNumber = urlParams.get("mn");
+      const passcode = urlParams.get("pwd");
+
+      ZoomMtg.setZoomJSLib("https://source.zoom.us/2.18.2/lib", "/av");
+      ZoomMtg.preLoadWasm();
+      ZoomMtg.prepareWebSDK();
+
+      fetch("/api/zoom/signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingNumber,
+          role: 0,
+        }),
+      })
+        .then((res) => res.json())
+        .then(({ signature }) => {
+          ZoomMtg.init({
+            leaveUrl: "/members/masterclasses",
+            success: function () {
+              ZoomMtg.join({
+                signature: signature,
+                sdkKey: window.location.origin.includes("localhost")
+                  ? ""
+                  : "", // SDK key not required here if signature built correctly
+                meetingNumber: meetingNumber,
+                passWord: passcode,
+                userName: "Masterclass Member",
+              });
+            },
+          });
+        });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Zoom Room</title>
+
+  <link type="text/css" rel="stylesheet" href="https://source.zoom.us/3.11.2/css/bootstrap.css" />
+  <link type="text/css" rel="stylesheet" href="https://source.zoom.us/3.11.2/css/react-select.css" />
+
+  <style>
+    body { margin: 0; }
+    #zmmtg-root { display: block !important; }
+    #zoom-error { color: #b91c1c; padding: 1rem; font-family: sans-serif; }
+  </style>
+</head>
+
+<body>
+  <div id="zmmtg-root"></div>
+  <div id="aria-notify-area"></div>
+  <div id="zoom-error"></div>
+
+  <!-- Load Zoom SDK -->
+  <script src="https://source.zoom.us/3.11.2/lib/vendor/react.min.js"></script>
+  <script src="https://source.zoom.us/3.11.2/lib/vendor/react-dom.min.js"></script>
+  <script src="https://source.zoom.us/3.11.2/lib/vendor/redux.min.js"></script>
+  <script src="https://source.zoom.us/3.11.2/lib/vendor/redux-thunk.min.js"></script>
+  <script src="https://source.zoom.us/3.11.2/lib/vendor/lodash.min.js"></script>
+  <script src="https://source.zoom.us/zoom-meeting-3.11.2.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const ZOOM_SDK_VERSION = "3.11.2";
+      const errorEl = document.getElementById("zoom-error");
+
+      function showError(msg) {
+        if (errorEl) errorEl.textContent = msg;
+      }
+
+      if (!window.ZoomMtg) {
+        showError("Zoom Meeting SDK failed to load. Please refresh the page.");
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const meetingNumber = params.get("mn");
+      const passcode = params.get("pwd");
+      const sdkKey = params.get("sdk");
+      const participantName = decodeURIComponent(params.get("uname") || "Participant");
+      const leavePath = params.get("leave") || "/members/masterclasses";
+
+      if (!meetingNumber || !sdkKey) {
+        showError("Missing meeting number or SDK key. Check the page URL.");
+        return;
+      }
+
+      async function startZoom() {
+        const res = await fetch("/api/zoom/signature", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meetingNumber, role: 0 })
+        });
+
+        const data = await res.json();
+        const signature = data.signature;
+
+        window.ZoomMtg.setZoomJSLib(`https://source.zoom.us/${ZOOM_SDK_VERSION}/lib`, "/av");
+        window.ZoomMtg.preLoadWasm();
+        window.ZoomMtg.prepareWebSDK();
+
+        window.ZoomMtg.init({
+          leaveUrl: window.location.origin + leavePath,
+          success: function () {
+            window.ZoomMtg.join({
+              sdkKey: sdkKey,
+              signature: signature,
+              meetingNumber: meetingNumber,
+              passWord: passcode,
+              userName: participantName
+            });
+            window.ZoomMtg.inMeetingServiceListener('onMeetingStatus', function (data) {
+              if (data.meetingStatus === 3) {
+                window.top.location.href = window.location.origin + leavePath;
+              }
+            });
+          },
+          error: function (err) {
+            console.error("Zoom init error", err);
+            showError("Zoom init failed. Please try again.");
+          }
+        });
+      }
+
+      startZoom();
+    });
+  </script>
+</body>
+</html>
