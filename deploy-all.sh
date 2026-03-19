@@ -20,7 +20,8 @@ jq -c '.[]' clients.json | while read client; do
   git config user.name "$NAME"
   git config user.email "$EMAIL"
 
-  git commit --amend --no-edit --reset-author
+  git add .
+  git commit --allow-empty -m "Deploy template update"
 
   git push origin main --force --progress
 
