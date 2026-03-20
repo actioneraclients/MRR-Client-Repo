@@ -1,5 +1,6 @@
 "use client"
 
+import { marked } from "marked"
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import type { Dashboard2Data, WeeklyItem } from "../actions"
@@ -165,9 +166,12 @@ export function Dashboard2Content(props: Dashboard2Data) {
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-4">
                   {creatorHeadline || "Platform Update"}
                 </h2>
-                <p className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
-                  {creatorMessage || "Check back soon for updates from the community."}
-                </p>
+                <div
+                  className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{
+                    __html: marked.parse(creatorMessage || "Check back soon for updates from the community."),
+                  }}
+                />
 
                 {!hasCreatorVideo && (
                   <div className="mt-6">

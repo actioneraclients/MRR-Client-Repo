@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/browser"
 
 export default function ResetPasswordPage() {
@@ -39,7 +40,11 @@ export default function ResetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setError(error.message)
+      if (error.message.toLowerCase().includes("auth session missing")) {
+        setError("expired")
+      } else {
+        setError(error.message)
+      }
       setLoading(false)
     } else {
       setSuccess(true)
@@ -145,7 +150,16 @@ export default function ResetPasswordPage() {
               role="alert"
               className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800"
             >
-              {error}
+              {error === "expired" ? (
+                <>
+                  Reset time has expired. Try again by going back to{" "}
+                  <Link href="/forgot-password" className="underline font-medium">
+                    Forgot Password
+                  </Link>.
+                </>
+              ) : (
+                error
+              )}
             </div>
           )}
         </div>

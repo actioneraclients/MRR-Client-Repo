@@ -1083,5 +1083,49 @@ export function SalesSectionRenderer({
     )
   }
 
+  if (section.type === "cta" || section.type === "call_to_action") {
+    const headline = getContentValue(c, "headline")
+    const subheadline = getContentValue(c, "subheadline")
+    const buttonText = getContentValue(c, "button_text")
+    const buttonUrl =
+      getContentValue(c, "button_url") ||
+      getContentValue(c, "button_link") ||
+      getContentValue(c, "link") ||
+      getContentValue(c, "url")
+
+    const href = buttonUrl?.trim() || "#"
+    const bg = getSectionBg(sectionIndex, "cta")
+
+    return (
+      <section id="cta" className={`py-16 md:py-24 ${bg}`}>
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          {headline && (
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 mb-6">
+              {headline}
+            </h2>
+          )}
+
+          {subheadline && (
+            <div className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-8">
+              <TextBlock text={subheadline} className="text-slate-600" />
+            </div>
+          )}
+
+          {buttonText && (
+            <a
+              href={href}
+              target={href.startsWith("http") ? "_blank" : undefined}
+              rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+              className="inline-block px-6 py-3 rounded-full bg-blue-600 text-white font-medium shadow-sm hover:bg-blue-700 hover:shadow-md transition"
+              style={accentColor !== "#2563eb" ? { backgroundColor: accentColor } : undefined}
+            >
+              {buttonText}
+            </a>
+          )}
+        </div>
+      </section>
+    )
+  }
+
   return null
 }

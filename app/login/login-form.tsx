@@ -89,6 +89,66 @@ export default function LoginForm({ enableGoogleAuth }: { enableGoogleAuth: bool
     return newErrors
   }
 
+  async function triggerGHLWebhookIfNewUser(user: any) {
+    try {
+      if (!user?.id) return
+
+      let profile = null
+
+      for (let i = 0; i < 5; i++) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("plan_id, created_at")
+          .eq("id", user.id)
+          .single()
+
+        if (data) {
+          profile = data
+          break
+        }
+
+        await new Promise((res) => setTimeout(res, 500)) // wait 500ms
+      }
+
+      if (!profile?.plan_id || !profile?.created_at) {
+        console.log("[GHL] Profile not ready, skipping webhook")
+        return
+      }
+
+      const createdAt = new Date(profile.created_at).getTime()
+      const now = Date.now()
+
+      const isNewUser = now - createdAt < 15 * 60 * 1000 // 15 min window
+
+      if (!isNewUser) return
+
+      const webhookMap: Record<string, string> = {
+        // ADD YOUR PLAN_ID → WEBHOOK URL MAPPINGS HERE
+        // example:
+        // "plan-id-1": "https://hook.ghl.com/webhook-1",
+      }
+
+      const webhookUrl = webhookMap[profile.plan_id]
+
+      if (!webhookUrl) return
+
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: user.email,
+          name: user.user_metadata?.full_name,
+        }),
+      })
+
+      console.log("[GHL] Webhook triggered for new user:", user.email)
+    } catch (err) {
+      console.error("[GHL] Webhook error:", err)
+    }
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
@@ -128,12 +188,21 @@ export default function LoginForm({ enableGoogleAuth }: { enableGoogleAuth: bool
       }
 
       await supabase.auth.getSession()
+
+      if (data.user) {
+        await triggerGHLWebhookIfNewUser(data.user)
+      }
+
       setToast("Logged in successfully!")
+
+      await fetch("/api/trigger-ghl", {
+        method: "POST",
+      })
 
       router.push("/members/dashboard")
     } catch (err: any) {
       console.error("[login] error:", err)
-      setErrors({ general: err?.message ?? "Invalid email or password. Please try again." })
+      setErrors({ general: "login_failed" })
     } finally {
       setIsSubmitting(false)
     }
@@ -185,7 +254,26 @@ export default function LoginForm({ enableGoogleAuth }: { enableGoogleAuth: bool
 
             {errors.general && (
               <div role="alert" className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-                {errors.general}
+                {errors.general === "login_failed" ? (
+                  <>
+                    We couldn’t log you in.
+                    <br />
+                    <br />
+                    If you already have an account, please check your email and password.
+                    <br />
+                    If you’re new, you can{" "}
+                    <Link href="/" className="underline font-medium">
+                      choose a membership option here
+                    </Link>.
+                    <br />
+                    <br />
+                    <Link href="/forgot-password" className="underline font-medium">
+                      Forgot your password?
+                    </Link>
+                  </>
+                ) : (
+                  errors.general
+                )}
               </div>
             )}
 
